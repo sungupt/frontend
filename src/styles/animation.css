@@ -1,0 +1,26 @@
+@keyframes ambientGlow {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.ambient-glow {
+  position: fixed;
+  width: 40vw;
+  height: 40vw;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0) 70%);
+  filter: blur(80px);
+  z-index: -1;
+  border-radius: 50%;
+  animation: ambientGlow 20s infinite alternate;
+}
+
+.fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

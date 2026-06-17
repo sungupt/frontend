@@ -1,0 +1,393 @@
+-- =========================================
+-- EKART E-COMMERCE DATABASE SCHEMA
+-- =========================================
+-- Database: ekart_db
+-- Type: MySQL
+-- Version: 8.0+
+
+-- =========================================
+-- 1. CREATE DATABASE
+-- =========================================
+CREATE DATABASE IF NOT EXISTS ekart_db;
+USE ekart_db;
+
+-- =========================================
+-- 2. CUSTOMER TABLE
+-- =========================================
+-- Stores customer/user information
+CREATE TABLE IF NOT EXISTS customer (
+    email_id VARCHAR(100) PRIMARY KEY NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(10) NOT NULL UNIQUE,
+    address VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    INDEX idx_email (email_id),
+    INDEX idx_phone (phone_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 3. PRODUCT TABLE
+-- =========================================
+-- Stores product catalog information
+CREATE TABLE IF NOT EXISTS product (
+    product_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description LONGTEXT,
+    category VARCHAR(100) NOT NULL,
+    brand VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    available_quantity INT NOT NULL DEFAULT 0 CHECK (available_quantity >= 0),
+    image_url VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    INDEX idx_category (category),
+    INDEX idx_brand (brand),
+    INDEX idx_name (name),
+    FULLTEXT INDEX ft_name_description (name, description)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 4. CARD TABLE
+-- =========================================
+-- Stores customer credit/debit card information
+CREATE TABLE IF NOT EXISTS card (
+    card_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    customer_email_id VARCHAR(100) NOT NULL,
+    card_type VARCHAR(20) NOT NULL CHECK (card_type IN ('DEBIT', 'CREDIT')),
+    card_number VARCHAR(16) NOT NULL UNIQUE,
+    name_on_card VARCHAR(50) NOT NULL,
+    cvv_hash VARCHAR(255) NOT NULL,
+    expiry_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (customer_email_id) REFERENCES customer(email_id) ON DELETE CASCADE,
+    INDEX idx_customer_email (customer_email_id),
+    INDEX idx_card_number (card_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 5. CART TABLE
+-- =========================================
+-- Stores shopping cart information per customer
+CREATE TABLE IF NOT EXISTS cart (
+    cart_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    customer_email_id VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_email_id) REFERENCES customer(email_id) ON DELETE CASCADE,
+    INDEX idx_customer_email (customer_email_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 6. CART_PRODUCT TABLE
+-- =========================================
+-- Stores products in customer's cart (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS cart_product (
+    cart_product_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    cart_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_cart_product (cart_id, product_id),
+    INDEX idx_product_id (product_id),
+    INDEX idx_cart_id (cart_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 7. ORDER TABLE
+-- =========================================
+-- Stores customer orders
+CREATE TABLE IF NOT EXISTS `order` (
+    order_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    customer_email_id VARCHAR(100) NOT NULL,
+    date_of_order TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_price DECIMAL(12, 2) NOT NULL CHECK (total_price > 0),
+    order_status VARCHAR(50) NOT NULL DEFAULT 'PLACED' CHECK (order_status IN ('PLACED', 'CONFIRMED', 'DISPATCHED', 'DELIVERED', 'CANCELLED')),
+    discount DECIMAL(5, 2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
+    payment_through VARCHAR(50) NOT NULL CHECK (payment_through IN ('DEBIT', 'CREDIT')),
+    date_of_delivery DATETIME,
+    delivery_address VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_email_id) REFERENCES customer(email_id) ON DELETE CASCADE,
+    INDEX idx_customer_email (customer_email_id),
+    INDEX idx_order_date (date_of_order),
+    INDEX idx_order_status (order_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 8. ORDERED_PRODUCT TABLE
+-- =========================================
+-- Stores products in each order (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS ordered_product (
+    ordered_product_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    price_at_purchase DECIMAL(10, 2) NOT NULL CHECK (price_at_purchase > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES `order`(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES product(product_id),
+    INDEX idx_order_id (order_id),
+    INDEX idx_product_id (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 9. PAYMENT TABLE
+-- =========================================
+-- Stores payment transaction history
+CREATE TABLE IF NOT EXISTS payment (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    order_id INT NOT NULL UNIQUE,
+    card_id INT NOT NULL,
+    customer_email_id VARCHAR(100) NOT NULL,
+    payment_amount DECIMAL(12, 2) NOT NULL CHECK (payment_amount > 0),
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED')),
+    transaction_id VARCHAR(100) UNIQUE,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES `order`(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (card_id) REFERENCES card(card_id),
+    FOREIGN KEY (customer_email_id) REFERENCES customer(email_id),
+    INDEX idx_order_id (order_id),
+    INDEX idx_customer_email (customer_email_id),
+    INDEX idx_payment_status (payment_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- 10. AUDIT_LOG TABLE (Optional - for tracking changes)
+-- =========================================
+CREATE TABLE IF NOT EXISTS audit_log (
+    log_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id VARCHAR(100),
+    action VARCHAR(50) NOT NULL,
+    old_value LONGTEXT,
+    new_value LONGTEXT,
+    user_email_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_user (user_email_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================
+-- SAMPLE DATA INSERTION (OPTIONAL)
+-- =========================================
+
+-- Insert sample customers
+INSERT INTO customer (email_id, name, password, phone_number, address) VALUES
+('john@example.com', 'John Doe', '$2b$10$EIZkD4osSf.Aaed0vEkbNO.hkYxwqJg7k1f8Q6Cw8h2Qg8VrKmhT2', '9876543210', '123 Main Street, City, State 12345'),
+('jane@example.com', 'Jane Smith', '$2b$10$EIZkD4osSf.Aaed0vEkbNO.hkYxwqJg7k1f8Q6Cw8h2Qg8VrKmhT2', '9876543211', '456 Oak Avenue, Town, State 67890'),
+('admin@example.com', 'Admin User', '$2b$10$EIZkD4osSf.Aaed0vEkbNO.hkYxwqJg7k1f8Q6Cw8h2Qg8VrKmhT2', '9876543212', '789 Admin Road, City, State 11111');
+
+-- Insert sample products
+INSERT INTO product (name, description, category, brand, price, available_quantity, image_url) VALUES
+('iPhone 14 Pro', 'Latest Apple iPhone with advanced camera system', 'Electronics', 'Apple', 999.99, 50, 'https://via.placeholder.com/300?text=iPhone14'),
+('Samsung Galaxy S23', 'Premium Android smartphone with high performance', 'Electronics', 'Samsung', 899.99, 45, 'https://via.placeholder.com/300?text=Galaxy'),
+('Sony WH-1000XM5', 'Noise-canceling wireless headphones', 'Audio', 'Sony', 399.99, 30, 'https://via.placeholder.com/300?text=Headphones'),
+('MacBook Pro 14', 'Powerful laptop for professionals', 'Computers', 'Apple', 1999.99, 20, 'https://via.placeholder.com/300?text=MacBook'),
+('iPad Air', 'Versatile tablet with M1 chip', 'Tablets', 'Apple', 599.99, 35, 'https://via.placeholder.com/300?text=iPad'),
+('Samsung 65\" QLED TV', 'Ultra HD Smart TV with quantum display', 'TVs', 'Samsung', 1499.99, 15, 'https://via.placeholder.com/300?text=TV'),
+('DualSense Controller', 'PlayStation 5 wireless controller', 'Gaming', 'Sony', 69.99, 100, 'https://via.placeholder.com/300?text=Controller'),
+('AirPods Pro', 'Premium wireless earbuds with noise cancellation', 'Audio', 'Apple', 249.99, 60, 'https://via.placeholder.com/300?text=AirPods'),
+('Dell XPS 15', 'Professional laptop with RTX graphics', 'Computers', 'Dell', 1299.99, 25, 'https://via.placeholder.com/300?text=Dell'),
+('Google Pixel 7', 'Google flagship phone with AI features', 'Electronics', 'Google', 599.99, 40, 'https://via.placeholder.com/300?text=Pixel');
+
+-- Insert sample cards
+INSERT INTO card (customer_email_id, card_type, card_number, name_on_card, cvv_hash, expiry_date) VALUES
+('john@example.com', 'CREDIT', '1234567890123456', 'JOHN DOE', '$2b$10$EIZkD4osSf.Aaed0vEkbNO.hkYxwqJg7k1f8Q6Cw8h2Qg8VrKmhT2', '2025-12-31'),
+('john@example.com', 'DEBIT', '1111111111111111', 'JOHN DOE', '$2b$10$EIZkD4osSf.Aaed0vEkbNO.hkYxwqJg7k1f8Q6Cw8h2Qg8VrKmhT2', '2026-06-30'),
+('jane@example.com', 'CREDIT', '2222222222222222', 'JANE SMITH', '$2b$10$EIZkD4osSf.Aaed0vEkbNO.hkYxwqJg7k1f8Q6Cw8h2Qg8VrKmhT2', '2025-08-31');
+
+-- Create carts for customers
+INSERT INTO cart (customer_email_id) VALUES
+('john@example.com'),
+('jane@example.com'),
+('admin@example.com');
+
+-- =========================================
+-- VIEWS (For easier querying)
+-- =========================================
+
+-- View for cart details with product information
+CREATE OR REPLACE VIEW v_cart_details AS
+SELECT 
+    c.cart_id,
+    c.customer_email_id,
+    cp.cart_product_id,
+    p.product_id,
+    p.name AS product_name,
+    p.brand,
+    p.price,
+    p.image_url,
+    cp.quantity,
+    (p.price * cp.quantity) AS total_price
+FROM cart c
+LEFT JOIN cart_product cp ON c.cart_id = cp.cart_id
+LEFT JOIN product p ON cp.product_id = p.product_id;
+
+-- View for order details with product information
+CREATE OR REPLACE VIEW v_order_details AS
+SELECT 
+    o.order_id,
+    o.customer_email_id,
+    o.date_of_order,
+    o.total_price,
+    o.order_status,
+    o.discount,
+    o.payment_through,
+    o.date_of_delivery,
+    o.delivery_address,
+    op.ordered_product_id,
+    p.product_id,
+    p.name AS product_name,
+    p.brand,
+    op.price_at_purchase,
+    op.quantity
+FROM `order` o
+LEFT JOIN ordered_product op ON o.order_id = op.order_id
+LEFT JOIN product p ON op.product_id = p.product_id;
+
+-- View for payment transaction details
+CREATE OR REPLACE VIEW v_payment_details AS
+SELECT 
+    p.payment_id,
+    p.order_id,
+    p.customer_email_id,
+    c.name_on_card,
+    c.card_type,
+    CONCAT(SUBSTR(c.card_number, 1, 4), ' **** **** ', SUBSTR(c.card_number, -4)) AS masked_card_number,
+    p.payment_amount,
+    p.payment_status,
+    p.payment_date,
+    o.total_price,
+    o.order_status
+FROM payment p
+LEFT JOIN card c ON p.card_id = c.card_id
+LEFT JOIN `order` o ON p.order_id = o.order_id;
+
+-- =========================================
+-- STORED PROCEDURES
+-- =========================================
+
+-- Procedure to place an order
+DELIMITER $$
+
+CREATE PROCEDURE sp_place_order(
+    IN p_customer_email VARCHAR(100),
+    IN p_delivery_address VARCHAR(500),
+    IN p_delivery_date DATETIME,
+    OUT p_order_id INT,
+    OUT p_total_price DECIMAL(12, 2),
+    OUT p_discount DECIMAL(5, 2)
+)
+BEGIN
+    DECLARE v_cart_id INT;
+    DECLARE v_payment_through VARCHAR(20);
+    DECLARE v_exit_handler BOOLEAN DEFAULT FALSE;
+    
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET v_exit_handler = TRUE;
+    END;
+    
+    START TRANSACTION;
+    
+    -- Get cart ID
+    SELECT cart_id INTO v_cart_id FROM cart WHERE customer_email_id = p_customer_email;
+    
+    IF v_cart_id IS NULL THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cart not found';
+    END IF;
+    
+    -- Calculate total price from cart
+    SELECT COALESCE(SUM(p.price * cp.quantity), 0) INTO p_total_price
+    FROM cart_product cp
+    JOIN product p ON cp.product_id = p.product_id
+    WHERE cp.cart_id = v_cart_id;
+    
+    IF p_total_price = 0 THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cart is empty';
+    END IF;
+    
+    -- Create order
+    INSERT INTO `order` (customer_email_id, delivery_address, date_of_delivery, total_price, order_status)
+    VALUES (p_customer_email, p_delivery_address, p_delivery_date, p_total_price, 'PLACED');
+    
+    SET p_order_id = LAST_INSERT_ID();
+    
+    -- Copy cart products to order
+    INSERT INTO ordered_product (order_id, product_id, quantity, price_at_purchase)
+    SELECT p_order_id, cp.product_id, cp.quantity, p.price
+    FROM cart_product cp
+    JOIN product p ON cp.product_id = p.product_id
+    WHERE cp.cart_id = v_cart_id;
+    
+    -- Update product inventory
+    UPDATE product p
+    SET available_quantity = available_quantity - (
+        SELECT COALESCE(SUM(cp.quantity), 0)
+        FROM cart_product cp
+        WHERE cp.cart_id = v_cart_id AND cp.product_id = p.product_id
+    )
+    WHERE p.product_id IN (
+        SELECT cp.product_id FROM cart_product cp WHERE cp.cart_id = v_cart_id
+    );
+    
+    -- Clear cart
+    DELETE FROM cart_product WHERE cart_id = v_cart_id;
+    
+    IF v_exit_handler THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error occurred while placing order';
+    ELSE
+        COMMIT;
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- =========================================
+-- INDEXES FOR PERFORMANCE
+-- =========================================
+ALTER TABLE customer ADD INDEX idx_created_at (created_at);
+ALTER TABLE product ADD INDEX idx_created_at (created_at);
+ALTER TABLE `order` ADD INDEX idx_created_at (created_at);
+ALTER TABLE payment ADD INDEX idx_created_at (created_at);
+
+-- =========================================
+-- CONSTRAINTS AND TRIGGERS
+-- =========================================
+
+-- Trigger to prevent adding quantity if product inventory is insufficient
+DELIMITER $$
+
+CREATE TRIGGER trg_check_inventory_before_order_product
+BEFORE INSERT ON ordered_product
+FOR EACH ROW
+BEGIN
+    DECLARE v_available_qty INT;
+    
+    SELECT available_quantity INTO v_available_qty
+    FROM product WHERE product_id = NEW.product_id;
+    
+    IF NEW.quantity > v_available_qty THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient inventory';
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- =========================================
+-- END OF SCHEMA
+-- =========================================
