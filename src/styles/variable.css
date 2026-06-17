@@ -1,0 +1,50 @@
+:root {
+  /* Luxury Color Palette - Sand & Gold Theme */
+  --color-sand: #F7F1E3;
+  --color-sand-dark: #EDE4D0;
+  --color-gold: #D4AF37;
+  --color-gold-muted: #B8860B;
+  --color-gold-light: #FFD700;
+  --color-charcoal: #1A1C1C;
+  --color-charcoal-light: #2D2F2F;
+  --color-offwhite: #FAF9F9;
+  --color-white: #FFFFFF;
+  
+  /* Semantic Tokens */
+  --bg-primary: var(--color-offwhite);
+  --bg-secondary: var(--color-sand);
+  --text-primary: var(--color-charcoal);
+  --text-secondary: var(--color-charcoal-light);
+  --accent-primary: var(--color-gold);
+  --border-luxury: rgba(212, 175, 55, 0.2);
+  
+  /* Glassmorphism Tokens */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-blur: blur(12px);
+  
+  /* Claymorphism Tokens */
+  --clay-shadow-out: 12px 12px 24px rgba(0, 0, 0, 0.1), -12px -12px 24px rgba(255, 255, 255, 0.7);
+  --clay-shadow-in: inset 4px 4px 8px rgba(0, 0, 0, 0.05), inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+  
+  /* Spacing & Radii */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+  
+  /* Transitions */
+  --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+[data-theme='dark'] {
+  --color-sand: #1A1A1A;
+  --color-offwhite: #0F0F0F;
+  --color-charcoal: #FAF9F9;
+  --color-charcoal-light: #D1D1D1;
+  --glass-bg: rgba(20, 20, 20, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
