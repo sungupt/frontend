@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "ajv": "^8.20.0",
-    "axios": "^1.18.0",
+    "axios": "^1.20.0",
     "bootstrap": "^5.3.8",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.18.0",
